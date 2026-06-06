@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Reading Tracker" />
+  <meta name="theme-color" content="#4CAF50" />
+  <title>Summer Reading Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      min-height: 100svh;
+      background: linear-gradient(150deg, #fffde7 0%, #e8f5e9 50%, #e3f2fd 100%);
+      padding: calc(var(--safe-top) + 24px) 16px calc(var(--safe-bottom) + 32px);
+      color: #37474f;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    #summary {
+      text-align: center;
+      font-size: 13px;
+      color: #78909c;
+      min-height: 20px;
+      margin-bottom: 20px;
+    }
+
+    .header-emoji {
+      text-align: center;
+      font-size: 34px;
+      margin-bottom: 6px;
+    }
+
+    #cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .card {
+      border-radius: 20px;
+      padding: 20px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow 0.25s, border-color 0.25s;
+      position: relative;
+    }
+
+    .card.running {
+      box-shadow: 0 4px 24px var(--shadow);
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 10px; right: 12px;
+      background: none; border: none;
+      font-size: 20px; color: #bbb;
+      cursor: pointer; line-height: 1;
+      padding: 4px 6px;
+    }
+
+    .name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kid-emoji { font-size: 22px; }
+
+    .kid-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 2px dashed var(--light);
+      padding-bottom: 1px;
+      cursor: text;
+      outline: none;
+      background: transparent;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: 'Georgia', serif;
+      width: 100%;
+    }
+
+    .kid-name:focus {
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .timer-display {
+      font-family: 'Courier New', monospace;
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-align: center;
+      padding: 2px 0;
+      transition: opacity 0.2s;
+    }
+
+    .card:not(.running) .timer-display { opacity: 0.7; }
+
+    .status-text {
+      text-align: center;
+      font-size: 13px;
+      color: var(--accent);
+      opacity: 0.65;
+      min-height: 18px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .btn-primary {
+      flex: 2;
+      padding: 13px 0;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Georgia', serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 13px 0;
+      border-radius: 12px;
+      border: 2px solid var(--light);
+      background: transparent;
+      color: var(--accent);
+      font-family: 'Georgia', serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-secondary:active { opacity: 0.7; }
+
+    /* Add child row */
+    #add-row {
+      max-width: 480px;
+      margin: 16px auto 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    #new-name {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 2px solid #cfd8dc;
+      font-family: 'Georgia', serif;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+      color: #37474f;
+    }
+
+    #new-name:focus { border-color: #78909c; }
+
+    #add-btn {
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: none;
+      background: #455a64;
+      color: #fff;
+      font-family: 'Georgia', serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #hint {
+      text-align: center;
+      color: #90a4ae;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+
+    /* Pulsing ring for active timer */
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 var(--shadow); }
+      70% { box-shadow: 0 0 0 8px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+
+    .card.running { animation: pulse-ring 2s ease-out infinite; }
+  </style>
+</head>
+<body>
+
+<div class="header-emoji">☀️📚</div>
+<h1>Summer Reading Tracker</h1>
+<div id="summary"></div>
+
+<div id="cards"></div>
+
+<div id="add-row">
+  <input id="new-name" type="text" placeholder="Child's name…" />
+  <button id="add-btn">+ Add</button>
+</div>
+<p id="hint">Tap a name to rename · Timers run independently</p>
+
+<script>
+  const COLORS = [
+    { bg: "#FFF3E0", accent: "#E65100", light: "#FFE0B2", shadow: "#FF8F0044" },
+    { bg: "#E8F5E9", accent: "#2E7D32", light: "#C8E6C9", shadow: "#388E3C44" },
+    { bg: "#E3F2FD", accent: "#1565C0", light: "#BBDEFB", shadow: "#1976D244" },
+    { bg: "#FCE4EC", accent: "#B71C1C", light: "#F8BBD0", shadow: "#E5393544" },
+    { bg: "#EDE7F6", accent: "#4527A0", light: "#D1C4E9", shadow: "#7B1FA244" },
+    { bg: "#E0F7FA", accent: "#00695C", light: "#B2EBF2", shadow: "#00897B44" },
+  ];
+  const EMOJIS = ["📖", "📚", "🔖", "📕", "📗", "📘"];
+
+  // Safe storage helpers — fall back to in-memory if localStorage is blocked
+  let memoryStore = null;
+  function loadStored() {
+    try {
+      const raw = localStorage.getItem("rtKids");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return memoryStore;
+    }
+  }
+  function writeStored(data) {
+    memoryStore = data;
+    try {
+      localStorage.setItem("rtKids", JSON.stringify(data));
+    } catch (e) { /* storage unavailable — kept in memory */ }
+  }
+
+  let kids = loadStored() || [
+    { id: 1, name: "Child 1", accumulated: 0, running: false, startedAt: null },
+    { id: 2, name: "Child 2", accumulated: 0, running: false, startedAt: null },
+  ];
+
+  let nextId = Math.max(...kids.map(k => k.id), 0) + 1;
+
+  function save() {
+    // Pause running timers before saving (accumulate time)
+    const snapshot = kids.map(k => {
+      if (k.running) {
+        return { ...k, accumulated: k.accumulated + Date.now() - k.startedAt, running: false, startedAt: null };
+      }
+      return { ...k };
+    });
+    writeStored(snapshot);
+  }
+
+  function formatTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  function formatTotal(ms) {
+    const mins = Math.floor(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${mins}m`;
+  }
+
+  function currentMs(k) {
+    return k.accumulated + (k.running ? Date.now() - k.startedAt : 0);
+  }
+
+  function toggle(id) {
+    kids = kids.map(k => {
+      if (k.id !== id) return k;
+      if (k.running) {
+        return { ...k, running: false, accumulated: k.accumulated + Date.now() - k.startedAt, startedAt: null };
+      }
+      return { ...k, running: true, startedAt: Date.now() };
+    });
+    save();
+    render();
+  }
+
+  function reset(id) {
+    kids = kids.map(k => k.id === id ? { ...k, running: false, accumulated: 0, startedAt: null } : k);
+    save();
+    render();
+  }
+
+  function remove(id) {
+    kids = kids.filter(k => k.id !== id);
+    save();
+    render();
+  }
+
+  function rename(id, name) {
+    kids = kids.map(k => k.id === id ? { ...k, name } : k);
+    save();
+  }
+
+  function addKid() {
+    const input = document.getElementById('new-name');
+    const name = input.value.trim() || `Child ${kids.length + 1}`;
+    kids.push({ id: nextId++, name, accumulated: 0, running: false, startedAt: null });
+    input.value = '';
+    save();
+    render();
+  }
+
+  function render() {
+    const container = document.getElementById('cards');
+    container.innerHTML = '';
+
+    kids.forEach((k, i) => {
+      const c = COLORS[i % COLORS.length];
+      const emoji = EMOJIS[i % EMOJIS.length];
+      const ms = currentMs(k);
+
+      const card = document.createElement('div');
+      card.className = 'card' + (k.running ? ' running' : '');
+      card.style.cssText = `background:${c.bg}; border: 2.5px solid ${k.running ? c.accent : c.light}; --accent:${c.accent}; --light:${c.light}; --shadow:${c.shadow};`;
+
+      // Remove btn
+      const rmv = document.createElement('button');
+      rmv.className = 'remove-btn';
+      rmv.textContent = '×';
+      rmv.onclick = () => remove(k.id);
+
+      // Name row
+      const nameRow = document.createElement('div');
+      nameRow.className = 'name-row';
+
+      const emojiEl = document.createElement('span');
+      emojiEl.className = 'kid-emoji';
+      emojiEl.textContent = emoji;
+
+      const nameEl = document.createElement('input');
+      nameEl.className = 'kid-name';
+      nameEl.type = 'text';
+      nameEl.value = k.name;
+      nameEl.style.color = c.accent;
+      nameEl.style.borderBottomColor = c.light;
+      nameEl.onchange = () => rename(k.id, nameEl.value.trim() || k.name);
+      nameEl.onblur = () => rename(k.id, nameEl.value.trim() || k.name);
+
+      nameRow.append(emojiEl, nameEl);
+
+      // Timer
+      const timer = document.createElement('div');
+      timer.className = 'timer-display';
+      timer.id = `timer-${k.id}`;
+      timer.textContent = formatTime(ms);
+
+      // Status
+      const status = document.createElement('div');
+      status.className = 'status-text';
+      if (k.running) status.textContent = '📖 Reading now…';
+      else if (k.accumulated > 0) status.textContent = `Total today: ${formatTotal(k.accumulated)}`;
+      else status.textContent = 'Ready to read!';
+
+      // Buttons
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row';
+
+      const primary = document.createElement('button');
+      primary.className = 'btn-primary';
+      primary.textContent = k.running ? '⏸ Pause' : '▶ Start';
+      primary.onclick = () => toggle(k.id);
+
+      const secondary = document.createElement('button');
+      secondary.className = 'btn-secondary';
+      secondary.textContent = 'Reset';
+      secondary.onclick = () => reset(k.id);
+
+      btnRow.append(primary, secondary);
+      card.append(rmv, nameRow, timer, status, btnRow);
+      container.appendChild(card);
+    });
+
+    // Summary
+    const totalMs = kids.reduce((s, k) => s + currentMs(k), 0);
+    const sumEl = document.getElementById('summary');
+    sumEl.textContent = totalMs > 0 ? `All kids combined: ${formatTotal(totalMs)} today` : '';
+  }
+
+  // Tick every second
+  setInterval(() => {
+    kids.forEach(k => {
+      if (!k.running) return;
+      const el = document.getElementById(`timer-${k.id}`);
+      if (el) el.textContent = formatTime(currentMs(k));
+    });
+    // Update summary too
+    const totalMs = kids.reduce((s, k) => s + currentMs(k), 0);
+    document.getElementById('summary').textContent =
+      totalMs > 0 ? `All kids combined: ${formatTotal(totalMs)} today` : '';
+  }, 1000);
+
+  // Add button / enter key
+  document.getElementById('add-btn').onclick = addKid;
+  document.getElementById('new-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addKid();
+  });
+
+  // Save on page hide (iOS PWA)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') save();
+  });
+
+  render();
+</script>
+</body>
+</html>
