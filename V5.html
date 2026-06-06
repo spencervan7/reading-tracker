@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Reading Tracker" />
+  <meta name="theme-color" content="#3d2f24" />
+  <!-- Home screen icon: upload a 180x180 PNG named apple-touch-icon.png to the repo -->
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <title>Reading Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Spectral:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --paper: #f4ecd8;
+      --paper-deep: #e8dcc0;
+      --ink: #3d2f24;
+      --ink-soft: #6b5844;
+      --gilt: #9a7b4f;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Spectral', Georgia, serif;
+      min-height: 100svh;
+      color: var(--ink);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      background-color: #ede2c8;
+      background-image:
+        radial-gradient(ellipse at 50% 0%, rgba(255,250,235,0.6), transparent 60%),
+        radial-gradient(ellipse at 50% 120%, rgba(120,90,55,0.18), transparent 55%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      padding: calc(var(--safe-top) + 28px) 18px calc(var(--safe-bottom) + 36px);
+    }
+
+    .masthead {
+      max-width: 480px;
+      margin: 0 auto 22px;
+      text-align: center;
+      position: relative;
+    }
+
+    .rule {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--gilt);
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-family: 'Fraunces', serif;
+      font-weight: 600;
+    }
+    .rule::before, .rule::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      max-width: 70px;
+      background: linear-gradient(90deg, transparent, var(--gilt));
+    }
+    .rule::after { background: linear-gradient(90deg, var(--gilt), transparent); }
+
+    h1 {
+      font-family: 'Fraunces', serif;
+      font-weight: 900;
+      font-size: 38px;
+      line-height: 0.98;
+      letter-spacing: -1px;
+      margin: 10px 0 4px;
+      color: var(--ink);
+    }
+    h1 .ital {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--gilt);
+    }
+
+    #summary {
+      font-family: 'Spectral', serif;
+      font-style: italic;
+      font-size: 14px;
+      color: var(--ink-soft);
+      min-height: 20px;
+    }
+
+    #cards {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .card {
+      position: relative;
+      background: var(--paper);
+      border: 1px solid var(--card-edge);
+      border-radius: 4px;
+      padding: 20px 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.5) inset,
+        0 2px 3px rgba(61,47,36,0.12),
+        0 10px 22px rgba(61,47,36,0.08);
+      transition: box-shadow 0.3s, transform 0.3s;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 5px;
+      border-radius: 4px 0 0 4px;
+      background: var(--accent);
+      opacity: 0.85;
+    }
+
+    .card.running {
+      transform: translateY(-2px);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.6) inset,
+        0 3px 5px rgba(61,47,36,0.16),
+        0 16px 34px rgba(61,47,36,0.16);
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none; border: none;
+      font-size: 18px; color: var(--ink-soft);
+      opacity: 0.4;
+      cursor: pointer; line-height: 1;
+      padding: 4px 6px;
+      font-family: 'Fraunces', serif;
+    }
+    .remove-btn:active { opacity: 0.9; }
+
+    .name-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding-left: 4px;
+    }
+
+    .kid-ornament {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+
+    .kid-name {
+      font-family: 'Fraunces', serif;
+      font-weight: 700;
+      font-size: 21px;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 1px dotted transparent;
+      outline: none;
+      width: 100%;
+      padding-bottom: 1px;
+      letter-spacing: -0.3px;
+    }
+    .kid-name:focus { border-bottom: 1px dotted var(--gilt); }
+
+    /* streak badge */
+    .streak {
+      flex-shrink: 0;
+      font-family: 'Spectral', serif;
+      font-size: 12px;
+      color: var(--accent);
+      white-space: nowrap;
+      opacity: 0.85;
+    }
+
+    .timer-display {
+      font-family: 'Fraunces', serif;
+      font-variant-numeric: tabular-nums;
+      font-weight: 400;
+      font-size: 52px;
+      letter-spacing: 1px;
+      color: var(--ink);
+      text-align: center;
+      padding: 4px 0 0;
+      transition: color 0.3s;
+    }
+    .card.running .timer-display { color: var(--accent); }
+
+    .status-text {
+      text-align: center;
+      font-family: 'Spectral', serif;
+      font-style: italic;
+      font-size: 13px;
+      color: var(--ink-soft);
+      min-height: 18px;
+      letter-spacing: 0.2px;
+    }
+
+    /* goal progress */
+    .goal-wrap {
+      padding: 0 2px;
+    }
+    .goal-track {
+      height: 7px;
+      border-radius: 4px;
+      background: rgba(61,47,36,0.1);
+      overflow: hidden;
+      border: 1px solid rgba(61,47,36,0.08);
+    }
+    .goal-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .goal-fill.met {
+      background: repeating-linear-gradient(
+        45deg, var(--accent), var(--accent) 6px,
+        rgba(255,255,255,0.25) 6px, rgba(255,255,255,0.25) 12px
+      );
+    }
+    .goal-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 5px;
+      font-family: 'Spectral', serif;
+      font-size: 11.5px;
+      color: var(--ink-soft);
+    }
+    .goal-edit {
+      background: none;
+      border: none;
+      color: var(--gilt);
+      font-family: 'Spectral', serif;
+      font-size: 11.5px;
+      font-style: italic;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline dotted;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+      padding: 0 2px;
+    }
+
+    .btn-primary {
+      flex: 2.2;
+      padding: 13px 0;
+      border-radius: 3px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: var(--paper);
+      font-family: 'Fraunces', serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .btn-primary:active { transform: scale(0.97); }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 13px 0;
+      border-radius: 3px;
+      border: 1px solid var(--card-edge);
+      background: transparent;
+      color: var(--ink-soft);
+      font-family: 'Fraunces', serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+    }
+    .btn-secondary:active { background: rgba(61,47,36,0.06); }
+
+    .add-time-btn {
+      width: 100%;
+      margin-top: 2px;
+      padding: 9px 0;
+      border-radius: 3px;
+      border: 1px dashed var(--card-edge);
+      background: transparent;
+      color: var(--ink-soft);
+      font-family: 'Spectral', serif;
+      font-style: italic;
+      font-size: 13px;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+    .add-time-btn:active { background: rgba(61,47,36,0.05); }
+
+    #add-row {
+      max-width: 480px;
+      margin: 20px auto 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    #new-name {
+      flex: 1;
+      padding: 13px 15px;
+      border-radius: 3px;
+      border: 1px solid var(--paper-deep);
+      background: rgba(255,253,247,0.7);
+      font-family: 'Spectral', serif;
+      font-size: 15px;
+      outline: none;
+      color: var(--ink);
+    }
+    #new-name::placeholder { color: var(--ink-soft); opacity: 0.6; font-style: italic; }
+    #new-name:focus { border-color: var(--gilt); }
+
+    #add-btn {
+      padding: 13px 20px;
+      border-radius: 3px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'Fraunces', serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+    #add-btn:active { transform: scale(0.97); }
+
+    #hint {
+      text-align: center;
+      color: var(--ink-soft);
+      opacity: 0.7;
+      font-family: 'Spectral', serif;
+      font-style: italic;
+      font-size: 12px;
+      margin-top: 16px;
+      letter-spacing: 0.3px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="rule">Est. Summer 2026</div>
+  <h1>The Reading <span class="ital">Hours</span></h1>
+  <div id="summary"></div>
+</div>
+
+<div id="cards"></div>
+
+<div id="add-row">
+  <input id="new-name" type="text" placeholder="Add a reader…" />
+  <button id="add-btn">Add</button>
+</div>
+<p id="hint">Tap a name to rename · Goals & streaks reset each day at midnight</p>
+
+<script>
+  const COLORS = [
+    { accent: "#9a3b2e", edge: "#dcc9a3" },
+    { accent: "#3f6b4d", edge: "#dcc9a3" },
+    { accent: "#2f5470", edge: "#dcc9a3" },
+    { accent: "#8a5a2b", edge: "#dcc9a3" },
+    { accent: "#6a4a7a", edge: "#dcc9a3" },
+    { accent: "#5a6b3f", edge: "#dcc9a3" },
+  ];
+  const ORNAMENTS = ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII."];
+
+  // local date key, e.g. "2026-06-06"
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  // yesterday's key for streak continuity
+  function yesterdayKey() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  let memoryStore = null;
+  function loadStored() {
+    try {
+      const raw = localStorage.getItem("rtKids");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return memoryStore; }
+  }
+  function writeStored(data) {
+    memoryStore = data;
+    try { localStorage.setItem("rtKids", JSON.stringify(data)); } catch (e) {}
+  }
+
+  // Reader shape:
+  // { id, name, goalMin, running, startedAt,
+  //   today: "YYYY-MM-DD", accumulated (ms today),
+  //   streak, lastGoalDay (last day goal was met),
+  //   goalCountedToday (bool) }
+  function defaultReader(id, name, goalMin) {
+    return {
+      id, name, goalMin: goalMin ?? 20,
+      running: false, startedAt: null,
+      today: todayKey(), accumulated: 0,
+      streak: 0, lastGoalDay: null, goalCountedToday: false,
+    };
+  }
+
+  let kids = loadStored() || [
+    defaultReader(1, "Reader One"),
+    defaultReader(2, "Reader Two"),
+  ];
+
+  // Migrate older saved data / handle day rollover
+  function rolloverIfNeeded() {
+    const tk = todayKey();
+    kids = kids.map(k => {
+      // backfill any missing fields from old versions
+      k = { ...defaultReader(k.id, k.name, k.goalMin), ...k };
+      if (k.today !== tk) {
+        // new day: reset today's accumulated time & goal flag
+        // streak stays as-is (it reflects consecutive met-goal days)
+        return { ...k, today: tk, accumulated: 0, running: false, startedAt: null, goalCountedToday: false };
+      }
+      return k;
+    });
+  }
+
+  let nextId = Math.max(...kids.map(k => k.id), 0) + 1;
+  rolloverIfNeeded();
+
+  function save() {
+    const snapshot = kids.map(k => {
+      if (k.running) {
+        return { ...k, accumulated: k.accumulated + Date.now() - k.startedAt, running: false, startedAt: null };
+      }
+      return { ...k };
+    });
+    writeStored(snapshot);
+  }
+
+  function formatTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+  function formatTotal(ms) {
+    const mins = Math.floor(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${mins} min`;
+  }
+  function currentMs(k) {
+    return k.accumulated + (k.running ? Date.now() - k.startedAt : 0);
+  }
+
+  // Check whether reader just crossed their goal; if so, bump streak once per day
+  function checkGoal(k) {
+    if (k.goalCountedToday) return k;
+    const minsRead = currentMs(k) / 60000;
+    if (k.goalMin > 0 && minsRead >= k.goalMin) {
+      // continue streak if last met-day was yesterday, else start fresh at 1
+      const newStreak = (k.lastGoalDay === yesterdayKey()) ? k.streak + 1
+                       : (k.lastGoalDay === todayKey()) ? k.streak
+                       : 1;
+      return { ...k, goalCountedToday: true, lastGoalDay: todayKey(), streak: newStreak };
+    }
+    return k;
+  }
+
+  function toggle(id) {
+    kids = kids.map(k => {
+      if (k.id !== id) return k;
+      if (k.running) {
+        return { ...k, running: false, accumulated: k.accumulated + Date.now() - k.startedAt, startedAt: null };
+      }
+      return { ...k, running: true, startedAt: Date.now() };
+    });
+    save();
+    render();
+  }
+
+  function reset(id) {
+    kids = kids.map(k => k.id === id
+      ? { ...k, running: false, accumulated: 0, startedAt: null, goalCountedToday: false }
+      : k);
+    save();
+    render();
+  }
+
+  function remove(id) {
+    kids = kids.filter(k => k.id !== id);
+    save();
+    render();
+  }
+
+  function rename(id, name) {
+    kids = kids.map(k => k.id === id ? { ...k, name } : k);
+    save();
+  }
+
+  function editGoal(id) {
+    const k = kids.find(x => x.id === id);
+    if (!k) return;
+    const input = prompt(`Daily reading goal for ${k.name} (minutes):`, k.goalMin);
+    if (input === null) return;
+    const val = parseInt(input, 10);
+    if (!isNaN(val) && val >= 0) {
+      kids = kids.map(x => x.id === id ? { ...x, goalMin: val } : x);
+      save();
+      render();
+    }
+  }
+
+  function addTime(id) {
+    const k = kids.find(x => x.id === id);
+    if (!k) return;
+    const input = prompt(`Add minutes to ${k.name}'s reading today:`, "15");
+    if (input === null) return;
+    const mins = parseFloat(input);
+    if (isNaN(mins) || mins === 0) return;
+    kids = kids.map(x => {
+      if (x.id !== id) return x;
+      // allow negative entries to correct mistakes, but never below zero
+      const newAccum = Math.max(0, x.accumulated + mins * 60000);
+      return { ...x, accumulated: newAccum };
+    });
+    // re-check goal in case the added time crosses the threshold
+    kids = kids.map(x => x.id === id ? checkGoal(x) : x);
+    save();
+    render();
+  }
+
+  function addKid() {
+    const input = document.getElementById('new-name');
+    const name = input.value.trim() || `Reader ${kids.length + 1}`;
+    kids.push(defaultReader(nextId++, name));
+    input.value = '';
+    save();
+    render();
+  }
+
+  function render() {
+    const container = document.getElementById('cards');
+    container.innerHTML = '';
+
+    kids.forEach((k, i) => {
+      const c = COLORS[i % COLORS.length];
+      const ornament = ORNAMENTS[i % ORNAMENTS.length];
+      const ms = currentMs(k);
+      const mins = ms / 60000;
+      const goalMet = k.goalMin > 0 && mins >= k.goalMin;
+      const pct = k.goalMin > 0 ? Math.min(100, (mins / k.goalMin) * 100) : 0;
+
+      const card = document.createElement('div');
+      card.className = 'card' + (k.running ? ' running' : '');
+      card.style.cssText = `--accent:${c.accent}; --card-edge:${c.edge};`;
+
+      const rmv = document.createElement('button');
+      rmv.className = 'remove-btn';
+      rmv.textContent = '✕';
+      rmv.onclick = () => remove(k.id);
+
+      const nameRow = document.createElement('div');
+      nameRow.className = 'name-row';
+
+      const orn = document.createElement('span');
+      orn.className = 'kid-ornament';
+      orn.textContent = ornament;
+
+      const nameEl = document.createElement('input');
+      nameEl.className = 'kid-name';
+      nameEl.type = 'text';
+      nameEl.value = k.name;
+      nameEl.onchange = () => rename(k.id, nameEl.value.trim() || k.name);
+      nameEl.onblur = () => rename(k.id, nameEl.value.trim() || k.name);
+
+      const streak = document.createElement('span');
+      streak.className = 'streak';
+      streak.textContent = k.streak > 0 ? `🔥 ${k.streak}` : '';
+
+      nameRow.append(orn, nameEl, streak);
+
+      const timer = document.createElement('div');
+      timer.className = 'timer-display';
+      timer.id = `timer-${k.id}`;
+      timer.textContent = formatTime(ms);
+
+      const status = document.createElement('div');
+      status.className = 'status-text';
+      status.id = `status-${k.id}`;
+      if (k.running) status.textContent = '— reading now —';
+      else if (goalMet) status.textContent = "today's goal met ✓";
+      else if (ms > 0) status.textContent = `${formatTotal(ms)} read today`;
+      else status.textContent = 'ready to begin';
+
+      // goal bar
+      const goalWrap = document.createElement('div');
+      goalWrap.className = 'goal-wrap';
+
+      const track = document.createElement('div');
+      track.className = 'goal-track';
+      const fill = document.createElement('div');
+      fill.className = 'goal-fill' + (goalMet ? ' met' : '');
+      fill.id = `fill-${k.id}`;
+      fill.style.width = pct + '%';
+      track.append(fill);
+
+      const goalLabel = document.createElement('div');
+      goalLabel.className = 'goal-label';
+      const goalText = document.createElement('span');
+      goalText.id = `goaltext-${k.id}`;
+      goalText.textContent = k.goalMin > 0
+        ? `${Math.floor(mins)} of ${k.goalMin} min`
+        : 'no goal set';
+      const goalBtn = document.createElement('button');
+      goalBtn.className = 'goal-edit';
+      goalBtn.textContent = 'set goal';
+      goalBtn.onclick = () => editGoal(k.id);
+      goalLabel.append(goalText, goalBtn);
+
+      goalWrap.append(track, goalLabel);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row';
+
+      const primary = document.createElement('button');
+      primary.className = 'btn-primary';
+      primary.textContent = k.running ? 'Pause' : 'Begin Reading';
+      primary.onclick = () => toggle(k.id);
+
+      const secondary = document.createElement('button');
+      secondary.className = 'btn-secondary';
+      secondary.textContent = 'Reset';
+      secondary.onclick = () => reset(k.id);
+
+      btnRow.append(primary, secondary);
+
+      const addTimeBtn = document.createElement('button');
+      addTimeBtn.className = 'add-time-btn';
+      addTimeBtn.textContent = '+ Add time read away from the app';
+      addTimeBtn.onclick = () => addTime(k.id);
+
+      card.append(rmv, nameRow, timer, status, goalWrap, btnRow, addTimeBtn);
+      container.appendChild(card);
+    });
+
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const totalMs = kids.reduce((s, k) => s + currentMs(k), 0);
+    const sumEl = document.getElementById('summary');
+    sumEl.textContent = totalMs > 0 ? `${formatTotal(totalMs)} read between them today` : 'A quiet page awaits';
+  }
+
+  // Tick: update live timers, goal bars, streaks
+  setInterval(() => {
+    let changed = false;
+    kids = kids.map(k => {
+      if (!k.running) return k;
+      const before = k.goalCountedToday;
+      const updated = checkGoal(k);
+      if (updated.goalCountedToday !== before) changed = true;
+      return updated;
+    });
+
+    kids.forEach(k => {
+      const ms = currentMs(k);
+      const mins = ms / 60000;
+      const tEl = document.getElementById(`timer-${k.id}`);
+      if (tEl) tEl.textContent = formatTime(ms);
+      const fEl = document.getElementById(`fill-${k.id}`);
+      if (fEl && k.goalMin > 0) {
+        const pct = Math.min(100, (mins / k.goalMin) * 100);
+        fEl.style.width = pct + '%';
+        if (mins >= k.goalMin) fEl.classList.add('met');
+      }
+      const gtEl = document.getElementById(`goaltext-${k.id}`);
+      if (gtEl && k.goalMin > 0) gtEl.textContent = `${Math.floor(mins)} of ${k.goalMin} min`;
+    });
+
+    if (changed) { save(); render(); }
+    else updateSummary();
+  }, 1000);
+
+  document.getElementById('add-btn').onclick = addKid;
+  document.getElementById('new-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addKid();
+  });
+
+  // Handle returning to app after midnight / re-focus
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      save();
+    } else {
+      rolloverIfNeeded();
+      render();
+    }
+  });
+
+  render();
+</script>
+</body>
+</html>
